@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIME/OPS — Monthly & Daily Planner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1419">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TIME/OPS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1419;
+    --surface:#161d24;
+    --surface-2:#1c242c;
+    --border:#2a333d;
+    --text:#eef1f4;
+    --muted:#8b98a5;
+    --faint:#586472;
+    --cyan:#4fd1c5;
+    --amber:#f2a65a;
+    --violet:#a78bfa;
+    --rose:#f27878;
+    --free:#242c34;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:28px 16px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+
+  /* header / console bar */
+  .console{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    margin-bottom:18px;
+  }
+  .console .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.12em;
+    color:var(--cyan);
+    display:flex;align-items:center;gap:8px;
+  }
+  .tag::before{content:"●";font-size:10px;color:var(--cyan);animation:pulse 2.4s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .nav{display:flex;align-items:center;gap:14px;}
+  .nav button{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    width:32px;height:32px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:15px;
+    font-family:'JetBrains Mono',monospace;
+    transition:.15s;
+  }
+  .nav button:hover{background:var(--border);}
+  .nav .month-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:15px;font-weight:600;
+    letter-spacing:.06em;
+    min-width:150px;text-align:center;
+  }
+
+  /* calendar */
+  .cal-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .weekdays{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--faint);
+    letter-spacing:.08em;
+    padding:0 2px 8px;
+  }
+  .weekdays div{text-align:center;}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .day{
+    aspect-ratio:1/0.82;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:6px 7px;
+    cursor:pointer;
+    position:relative;
+    transition:.12s;
+    display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .day:hover{border-color:var(--cyan);}
+  .day.empty{background:transparent;border-color:transparent;cursor:default;}
+  .day.today{border-color:var(--amber);}
+  .day.selected{background:#20303380;border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset;}
+  .day .num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;color:var(--text);
+  }
+  .day.today .num{color:var(--amber);font-weight:700;}
+  .day .dots{display:flex;gap:3px;flex-wrap:wrap;}
+  .day .dots span{width:5px;height:5px;border-radius:50%;display:inline-block;}
+
+  /* day panel */
+  .day-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px;
+  }
+  .day-card .head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:6px;flex-wrap:wrap;gap:10px;
+  }
+  .day-card .head h2{
+    font-family:'JetBrains Mono',monospace;
+    font-size:15px;margin:0;letter-spacing:.03em;color:var(--text);
+  }
+  .day-card .head .sub{font-size:12px;color:var(--muted);}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:10px 0 16px;font-family:'JetBrains Mono',monospace;}
+  .legend .item{display:flex;align-items:center;gap:6px;}
+  .legend .sw{width:10px;height:10px;border-radius:3px;}
+  .hint{font-size:11.5px;color:var(--faint);margin-bottom:14px;}
+
+  .timeline{display:flex;flex-direction:column;border-top:1px solid var(--border);}
+  .hour-row{
+    display:grid;
+    grid-template-columns:52px 1fr;
+    align-items:stretch;
+    border-bottom:1px solid var(--border);
+    min-height:34px;
+    position:relative;
+  }
+  .hour-row .h-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--faint);
+    display:flex;align-items:center;justify-content:flex-end;
+    padding-right:10px;
+  }
+  .hour-row.now .h-label{color:var(--amber);font-weight:600;}
+  .hour-row .h-block{
+    background:var(--free);
+    cursor:pointer;
+    display:flex;align-items:center;
+    padding:0 10px;
+    border-left:1px solid var(--border);
+    transition:filter .12s;
+    font-size:12.5px;color:var(--muted);
+    -webkit-user-select:none;user-select:none;
+  }
+  .hour-row .h-block:hover{filter:brightness(1.25);}
+  .hour-row .h-block[data-cat="deep"]{background:rgba(79,209,197,.22);color:var(--cyan);}
+  .hour-row .h-block[data-cat="meeting"]{background:rgba(242,166,90,.22);color:var(--amber);}
+  .hour-row .h-block[data-cat="personal"]{background:rgba(167,139,250,.22);color:var(--violet);}
+  .hour-row .h-block[data-cat="urgent"]{background:rgba(242,120,120,.22);color:var(--rose);}
+  .hour-row .h-block .label-text{
+    background:transparent;border:none;color:inherit;font-family:'Inter',sans-serif;
+    font-size:12.5px;width:100%;outline:none;
+  }
+  .now-line{
+    position:absolute;left:0;right:0;top:0;height:2px;background:var(--amber);
+    box-shadow:0 0 6px var(--amber);
+  }
+
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .actions button{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.04em;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 14px;border-radius:7px;cursor:pointer;
+  }
+  .actions button:hover{border-color:var(--cyan);}
+  .actions .clear-btn:hover{border-color:var(--rose);}
+
+  footer{
+    text-align:center;color:var(--faint);font-size:11px;
+    font-family:'JetBrains Mono',monospace;margin-top:22px;letter-spacing:.05em;
+  }
+
+  @media (max-width:600px){
+    .day .num{font-size:11px;}
+    .weekdays{font-size:9.5px;}
+    .console{flex-direction:column;align-items:flex-start;gap:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="console">
+    <div class="tag">TIME/OPS · SCHEDULE CONSOLE</div>
+    <div class="nav">
+      <button id="prevBtn" aria-label="Previous month">‹</button>
+      <div class="month-label" id="monthLabel">JUNE 2026</div>
+      <button id="nextBtn" aria-label="Next month">›</button>
+    </div>
+  </div>
+
+  <div class="cal-card">
+    <div class="weekdays">
+      <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+    </div>
+    <div class="grid" id="calGrid"></div>
+  </div>
+
+  <div class="day-card">
+    <div class="head">
+      <h2 id="selectedLabel">SELECTED · —</h2>
+      <div class="sub" id="loadSummary"></div>
+    </div>
+    <div class="legend">
+      <div class="item"><span class="sw" style="background:rgba(79,209,197,.5)"></span>Deep work</div>
+      <div class="item"><span class="sw" style="background:rgba(242,166,90,.5)"></span>Meetings</div>
+      <div class="item"><span class="sw" style="background:rgba(167,139,250,.5)"></span>Personal</div>
+      <div class="item"><span class="sw" style="background:rgba(242,120,120,.5)"></span>Urgent</div>
+      <div class="item"><span class="sw" style="background:var(--free)"></span>Free</div>
+    </div>
+    <div class="hint">Click a block to cycle its category. Click the text to name what you're doing that hour.</div>
+    <div class="timeline" id="timeline"></div>
+    <div class="actions">
+      <button id="copyBtn">COPY DAY SUMMARY</button>
+      <button class="clear-btn" id="clearBtn">CLEAR DAY</button>
+    </div>
+  </div>
+
+  <footer>NO DATA LEAVES THIS DEVICE · SAVED LOCALLY · BUILT FOR SUBBU</footer>
+</div>
+
+<script>
+  const CATS = ["free","deep","meeting","personal","urgent"];
+  const CAT_NAMES = {free:"Free", deep:"Deep work", meeting:"Meeting", personal:"Personal", urgent:"Urgent"};
+  const MONTHS = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+
+  // Default view: June 2026 (as requested). Navigable to any month.
+  let viewYear = 2026, viewMonth = 5; // month index 0-based, 5 = June
+  let selectedDate = null; // "YYYY-M-D"
+
+  const STORAGE_KEY = "timeops-schedules";
+  function loadSchedules(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function saveSchedules(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules)); }catch(e){}
+  }
+  const schedules = loadSchedules(); // dateKey -> array of 24 {cat, text}
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+  function dateKey(y,m,d){ return `${y}-${m}-${d}`; }
+
+  function getSchedule(key){
+    if(!schedules[key]){
+      schedules[key] = Array.from({length:24}, () => ({cat:"free", text:""}));
+    }
+    return schedules[key];
+  }
+
+  function renderCalendar(){
+    document.getElementById("monthLabel").textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+    const grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+    for(let i=0;i<firstDay;i++){
+      const empty = document.createElement("div");
+      empty.className = "day empty";
+      grid.appendChild(empty);
+    }
+
+    for(let d=1; d<=daysInMonth; d++){
+      const key = dateKey(viewYear, viewMonth, d);
+      const cell = document.createElement("div");
+      cell.className = "day";
+      if(key === todayKey) cell.classList.add("today");
+      if(key === selectedDate) cell.classList.add("selected");
+
+      const num = document.createElement("div");
+      num.className = "num";
+      num.textContent = d;
+      cell.appendChild(num);
+
+      const dots = document.createElement("div");
+      dots.className = "dots";
+      const sched = schedules[key];
+      if(sched){
+        const seen = new Set();
+        sched.forEach(h => { if(h.cat !== "free") seen.add(h.cat); });
+        seen.forEach(cat => {
+          const dot = document.createElement("span");
+          const colorMap = {deep:"var(--cyan)",meeting:"var(--amber)",personal:"var(--violet)",urgent:"var(--rose)"};
+          dot.style.background = colorMap[cat];
+          dots.appendChild(dot);
+        });
+      }
+      cell.appendChild(dots);
+
+      cell.addEventListener("click", () => {
+        selectedDate = key;
+        renderCalendar();
+        renderDay();
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderDay(){
+    const label = document.getElementById("selectedLabel");
+    const timeline = document.getElementById("timeline");
+    const summary = document.getElementById("loadSummary");
+    timeline.innerHTML = "";
+
+    if(!selectedDate){
+      label.textContent = "SELECTED · pick a day above";
+      summary.textContent = "";
+      return;
+    }
+
+    const [y,m,d] = selectedDate.split("-").map(Number);
+    const dObj = new Date(y,m,d);
+    const dayName = dObj.toLocaleDateString('en-US',{weekday:'long'});
+    label.textContent = `${dayName.toUpperCase()} · ${MONTHS[m]} ${d}, ${y}`;
+
+    const sched = getSchedule(selectedDate);
+    const busyHours = sched.filter(h=>h.cat!=="free").length;
+    summary.textContent = `${busyHours}/24 hrs planned`;
+
+    const isToday = selectedDate === todayKey;
+    const currentHour = today.getHours();
+
+    for(let h=0; h<24; h++){
+      const row = document.createElement("div");
+      row.className = "hour-row";
+      if(isToday && h === currentHour) row.classList.add("now");
+
+      const hLabel = document.createElement("div");
+      hLabel.className = "h-label";
+      hLabel.textContent = (h%12===0?12:h%12) + (h<12?"a":"p");
+      row.appendChild(hLabel);
+
+      const block = document.createElement("div");
+      block.className = "h-block";
+      block.dataset.cat = sched[h].cat;
+
+      const input = document.createElement("input");
+      input.className = "label-text";
+      input.placeholder = CAT_NAMES[sched[h].cat];
+      input.value = sched[h].text;
+      input.addEventListener("click", e => e.stopPropagation());
+      input.addEventListener("input", e => {
+        sched[h].text = e.target.value;
+        saveSchedules();
+      });
+      block.appendChild(input);
+
+      block.addEventListener("click", () => {
+        const idx = CATS.indexOf(sched[h].cat);
+        sched[h].cat = CATS[(idx+1) % CATS.length];
+        block.dataset.cat = sched[h].cat;
+        input.placeholder = CAT_NAMES[sched[h].cat];
+        saveSchedules();
+        renderCalendar();
+        const busy = sched.filter(x=>x.cat!=="free").length;
+        summary.textContent = `${busy}/24 hrs planned`;
+      });
+
+      row.appendChild(block);
+      timeline.appendChild(row);
+    }
+  }
+
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    viewMonth--;
+    if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+    renderCalendar();
+  });
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    viewMonth++;
+    if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+    renderCalendar();
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", () => {
+    if(!selectedDate) return;
+    const sched = getSchedule(selectedDate);
+    const [y,m,d] = selectedDate.split("-").map(Number);
+    let text = `${MONTHS[m]} ${d}, ${y}\n`;
+    sched.forEach((h,i) => {
+      if(h.cat !== "free"){
+        const label = (i%12===0?12:i%12) + (i<12?"AM":"PM");
+        text += `${label} — ${CAT_NAMES[h.cat]}${h.text ? ": "+h.text : ""}\n`;
+      }
+    });
+    if(text.split("\n").length <= 2) text += "(nothing scheduled yet)\n";
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById("copyBtn");
+      const orig = btn.textContent;
+      btn.textContent = "COPIED";
+      setTimeout(() => btn.textContent = orig, 1200);
+    });
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if(!selectedDate) return;
+    schedules[selectedDate] = Array.from({length:24}, () => ({cat:"free", text:""}));
+    saveSchedules();
+    renderCalendar();
+    renderDay();
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+
+  renderCalendar();
+  renderDay();
+</script>
+</body>
+</html>
